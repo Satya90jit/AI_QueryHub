@@ -1,85 +1,68 @@
+# app/services/nlp_service.py
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 from sentence_transformers import SentenceTransformer
-import faiss
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
-import logging
-import traceback  # For better error handling
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-logger.info("Logging is configured properly.")
-
-# Load the Sentence Transformer model
-embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-logger.info("SentenceTransformer model loaded successfully.")
-
-# Initialize FAISS index
-embedding_dim = embedding_model.get_sentence_embedding_dimension()
-index = faiss.IndexFlatL2(embedding_dim)  # L2 distance for similarity
-documents = {}  # To store documents with IDs as keys for easy retrieval
-
-# Embedding function
-def create_embedding(text):
-    return embedding_model.encode(text)
+from app.models.document import Document
+from sqlalchemy.orm import Session
 
 class NLPService:
-    @staticmethod
-    def initialize_rag_agent():
-        """Initialize the RAG agent setup."""
-        # Create a prompt template for query processing
-        prompt_template = PromptTemplate(
-            template="Generate a response based on this context: {context}",
-            input_variables=["context"]
-        )
-        # Initialize the LLM chain (you can replace None with your actual model)
-        llm_chain = LLMChain(llm=None, prompt=prompt_template)
-        return llm_chain
-        
-    @staticmethod
-    def index_document(doc_content: str, doc_id: int):
-        """Index document text content."""
+    model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+    embeddings = {}  # Store document embeddings in memory
+    documents = {}  # Store document contents by ID
+
+    @classmethod
+    def index_document(cls, doc_content: str, doc_id: int):
+        """Indexes the document's content by generating its embedding."""
         try:
-            embedding = create_embedding(doc_content)
-            index.add(embedding.reshape(1, -1))  # Add embedding to the FAISS index
-            documents[doc_id] = doc_content  # Store document content with ID
-            logger.info(f"Indexed document {doc_id}")
+            # Generate an embedding for the document content
+            embedding = cls.model.encode(doc_content)
+            
+            # Check if the embedding is valid
+            if embedding is None or np.isnan(embedding).any() or len(embedding) == 0:
+                print(f"Error: Invalid embedding for document: {doc_content}")
+                return
+            
+            # Store the embedding and content with the document id as key
+            cls.embeddings[doc_id] = embedding
+            cls.documents[doc_id] = doc_content
+            print(f"Document Indexed: {doc_content}")
         except Exception as e:
-            logger.error(f"Failed to index document {doc_id}: {e}\n{traceback.format_exc()}")
-            raise e
+            print(f"Error indexing document: {e}")
 
-    @staticmethod
-    def query_document(query: str, threshold: float = 0.7) -> str:
-        """Perform NLP-based query against indexed documents."""
+    @classmethod
+    def query_document(cls, query: str, db: Session, threshold=0.5):
+        """Queries indexed documents to find the most relevant ones."""
         try:
-            # Generate query embedding
-            query_embedding = create_embedding(query).reshape(1, -1)
+            # Generate an embedding for the query
+            query_embedding = cls.model.encode(query)
             
-            # Retrieve relevant context using the query
-            distances, indices = index.search(query_embedding, k=5)
-            logger.info(f"Query: {query}")
-            logger.info(f"Distances: {distances}, Indices: {indices}")
-
-            # Filter out documents with distances above the threshold (low similarity)
-            relevant_docs = [documents[idx] for dist, idx in zip(distances[0], indices[0]) if dist < threshold]
+            if query_embedding is None or np.isnan(query_embedding).any() or len(query_embedding) == 0:
+                print(f"Error: Invalid query embedding for query: {query}")
+                return {"error": "Invalid query embedding"}
             
-            if not relevant_docs:
-                logger.warning("No relevant documents found within the similarity threshold.")
-                return "No relevant documents found."
+            # Calculate cosine similarities between the query and all indexed documents
+            similarities = {}
+            for doc_id, doc_embedding in cls.embeddings.items():
+                sim = cosine_similarity([query_embedding], [doc_embedding])[0][0]
+                similarities[doc_id] = sim
 
-            # Prepare context from retrieved documents
-            context = " ".join(relevant_docs)
-            logger.info(f"Context for query '{query}': {context[:500]}...")  # Log a snippet of context
-
-            # Check if LLMChain is properly initialized
-            if llm_chain:
-                response = llm_chain.run({"context": context, "query": query})
-                logger.info("Response generated from QA chain.")
+            # Sort documents by similarity score in descending order
+            sorted_docs = sorted(similarities.items(), key=lambda x: x[1], reverse=True)
+            
+            if sorted_docs and sorted_docs[0][1] >= threshold:
+                best_doc_id = sorted_docs[0][0]
+                best_doc_content = cls.documents.get(best_doc_id, "Content not found")
+                
+                print(f"Found relevant document with ID: {best_doc_id} and similarity: {sorted_docs[0][1]}")
+                
+                # Fetch the actual document content from the database
+                document = db.query(Document).filter(Document.id == best_doc_id).first()
+                if document:
+                    return {"document_id": document.id, "content": document.filename, "text": document.file_metadata}
+                else:
+                    return {"message": "Document not found in the database"}
             else:
-                response = "Simulated response based on context."
-                logger.warning("LLMChain not properly initialized; using simulated response.")
-
-            return response
+                return {"message": "No relevant documents found"}
         except Exception as e:
-            logger.error(f"Query failed: {e}\n{traceback.format_exc()}")
-            raise e
+            print(f"Error querying document: {e}")
+            return {"error": str(e)}

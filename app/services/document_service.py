@@ -17,17 +17,22 @@ def save_document(db: Session, filename: str, url: str, file_type: str, file_met
     db.commit()
     db.refresh(db_document)
 
+    # Extract the actual text content from file_metadata for indexing
+    # Combine all text parts into a single string
+    text_content = " ".join([metadata["text"] for metadata in file_metadata if metadata["text"]])
+
     # Index the document content in the NLP engine
-    # Ensure to pass the actual content of the document here, 
-    # assuming you want to index some content rather than metadata
-    NLPService.index_document(doc_content=json.dumps(file_metadata), doc_id=db_document.id)
+    # Pass the actual content instead of the metadata
+    NLPService.index_document(doc_content=text_content, doc_id=db_document.id)
+
     return db_document
 
 def extract_metadata(file) -> list:
     file_data = BytesIO(file.file.read())
     elements = partition(file=file_data)
     file.file.seek(0)  # Reset pointer after reading
-    
+
     # Convert elements to JSON-serializable format
+    # Collect the text content from the elements for metadata
     file_metadata = [{"type": type(element).__name__, "text": getattr(element, "text", None)} for element in elements]
     return file_metadata

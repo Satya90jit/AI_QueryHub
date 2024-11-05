@@ -11,14 +11,6 @@ app = FastAPI()
 create_database()
 
 from app.services.nlp_service import NLPService
-
-if __name__ == "__main__":
-    # Example usage of indexing a document
-    NLPService.index_document("This is a sample document content.", doc_id=1)
-
-    # Example usage of querying a document
-    response = NLPService.query_document("What is the content of the document?")
-    print(response)
     
 @app.get("/")
 async def root():

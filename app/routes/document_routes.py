@@ -7,9 +7,11 @@ from app.schemas.document import DocumentOut
 from app.models.document import Document
 import logging
 import json
+from app.services.nlp_service import NLPService
 
 router = APIRouter()
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Upload and create a document with metadata extraction and S3 storage
 @router.post("/upload/", response_model=DocumentOut, status_code=status.HTTP_201_CREATED)
@@ -63,8 +65,10 @@ def get_document(document_id: int, db: Session = Depends(get_db)):
 @router.get("/query/")
 async def query_document_nlp(query: str = Query(...), db: Session = Depends(get_db)):
     try:
-        response = nlp_service.NLPService.query_document(query)
+        logger.info(f"Received query: {query}")
+        response = NLPService.query_document(query, db)
+        logger.info(f"Query response: {response}")
         return {"query": query, "response": response}
     except Exception as e:
-        logging.error(f"Query failed: {e}")
+        logger.error(f"Query failed: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Query failed")
