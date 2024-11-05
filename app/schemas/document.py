@@ -17,3 +17,4 @@ class DocumentOut(BaseModel):
 
     class Config:
         orm_mode = True  # Ensures compatibility with SQLAlchemy models
+        from_attributes = True

@@ -1,11 +1,9 @@
 from sentence_transformers import SentenceTransformer
 import faiss
-from app.schemas.document import DocumentOut  # Ensure this schema exists
-import logging
-import traceback  # For better error handling
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
-from langchain.chains import create_retrieval_chain
+import logging
+import traceback  # For better error handling
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -27,6 +25,18 @@ def create_embedding(text):
 
 class NLPService:
     @staticmethod
+    def initialize_rag_agent():
+        """Initialize the RAG agent setup."""
+        # Create a prompt template for query processing
+        prompt_template = PromptTemplate(
+            template="Generate a response based on this context: {context}",
+            input_variables=["context"]
+        )
+        # Initialize the LLM chain (you can replace None with your actual model)
+        llm_chain = LLMChain(llm=None, prompt=prompt_template)
+        return llm_chain
+        
+    @staticmethod
     def index_document(doc_content: str, doc_id: int):
         """Index document text content."""
         try:
@@ -39,41 +49,36 @@ class NLPService:
             raise e
 
     @staticmethod
-    def query_document(query: str) -> str:
+    def query_document(query: str, threshold: float = 0.7) -> str:
         """Perform NLP-based query against indexed documents."""
         try:
             # Generate query embedding
             query_embedding = create_embedding(query).reshape(1, -1)
             
             # Retrieve relevant context using the query
-            distances, indices = index.search(query_embedding, k=5)  # Retrieve top 5 similar docs
+            distances, indices = index.search(query_embedding, k=5)
             logger.info(f"Query: {query}")
-            logger.info(f"Documents found: {len(indices[0])}")
+            logger.info(f"Distances: {distances}, Indices: {indices}")
 
-            if indices[0][0] == -1:  # Check if no relevant documents were found
-                logger.warning("No relevant documents found.")
+            # Filter out documents with distances above the threshold (low similarity)
+            relevant_docs = [documents[idx] for dist, idx in zip(distances[0], indices[0]) if dist < threshold]
+            
+            if not relevant_docs:
+                logger.warning("No relevant documents found within the similarity threshold.")
                 return "No relevant documents found."
 
             # Prepare context from retrieved documents
-            relevant_docs = [documents[idx] for idx in indices[0] if idx != -1]
             context = " ".join(relevant_docs)
-            logger.info("Context prepared for the query.")
+            logger.info(f"Context for query '{query}': {context[:500]}...")  # Log a snippet of context
 
-            # Create a simple prompt template for question generation
-            question_prompt_template = PromptTemplate(
-                template="Generate a response based on this context: {context}",
-                input_variables=["context"]
-            )
-            
-            # Initialize LLMChain with the context (you might use a local LLM or generate text here)
-            llm_chain = LLMChain(llm=None, prompt=question_prompt_template)  # Replace None with your own LLM if available
-            
-            inputs = {
-                "context": context,
-                "query": query
-            }
-            response = llm_chain.run(inputs) if llm_chain else "Simulated response based on context."
-            logger.info("Response generated from QA chain.")
+            # Check if LLMChain is properly initialized
+            if llm_chain:
+                response = llm_chain.run({"context": context, "query": query})
+                logger.info("Response generated from QA chain.")
+            else:
+                response = "Simulated response based on context."
+                logger.warning("LLMChain not properly initialized; using simulated response.")
+
             return response
         except Exception as e:
             logger.error(f"Query failed: {e}\n{traceback.format_exc()}")

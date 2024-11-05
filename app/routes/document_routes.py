@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session
 from app.services import file_service, document_service, nlp_service
 from app.dependencies import get_db
 from app.schemas.document import DocumentOut
+from app.models.document import Document
 import logging
+import json
 
 router = APIRouter()
 logging.basicConfig(level=logging.INFO)
@@ -25,7 +27,18 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
         document = document_service.save_document(
             db, file.filename, file_url, file.content_type, file_metadata
         )
-        return document
+
+          # Parse `file_metadata` to ensure it's a list for the response
+        if isinstance(document.file_metadata, str):
+            document.file_metadata = json.loads(document.file_metadata)
+
+        return DocumentOut(
+            id=document.id,
+            filename=document.filename,
+            url=document.url,
+            file_type=document.file_type,
+            file_metadata=document.file_metadata  # Ensure this is a list
+        )
     except Exception as e:
         logging.error(f"Error occurred during file upload: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while uploading the file.")
@@ -33,10 +46,18 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
 # Retrieve a document by ID
 @router.get("/document/{document_id}", response_model=DocumentOut)
 def get_document(document_id: int, db: Session = Depends(get_db)):
-    document = db.query(Document).get(document_id)
-    if document:
-        return DocumentOut.from_orm(document)
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    document = db.query(Document).filter(Document.id == document_id).first()
+    if not document:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    # Parse file_metadata if it's a string
+    if isinstance(document.file_metadata, str):
+        try:
+            document.file_metadata = json.loads(document.file_metadata)
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error parsing file metadata")
+    
+    return DocumentOut.from_orm(document)
 
 # Query the NLP model
 @router.get("/query/")

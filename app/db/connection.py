@@ -1,9 +1,10 @@
 # connection.py
 import os
 from sqlalchemy import create_engine, text
+from app.config.settings import settings
 
 # Fetch the DATABASE_URL from environment variables
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://myuser:abcdefgh@localhost/mydatabase")  # Fallback for testing
+DATABASE_URL = settings.DATABASE_URL
 engine = create_engine(DATABASE_URL)
 
 
