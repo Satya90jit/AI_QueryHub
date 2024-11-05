@@ -1,0 +1,170 @@
+# FastAPI is a modern web framework for building APIs with Python 3.6+ based on standard Python type hints.
+fastapi==0.115.4
+
+# Uvicorn is an ASGI server for running FastAPI applications.
+uvicorn==0.32.0
+
+# SQLAlchemy is a SQL toolkit and Object-Relational Mapping (ORM) system for Python.
+SQLAlchemy==2.0.36
+
+# psycopg2-binary is a PostgreSQL adapter for Python.
+psycopg2-binary==2.9.10
+
+# python-dotenv allows loading environment variables from a .env file.
+python-dotenv==1.0.1
+
+# passlib is a password hashing library that provides various hashing algorithms.
+passlib==1.7.4
+
+# pydantic is used for data validation and settings management using Python type annotations.
+pydantic==2.9.2
+
+# pydantic-settings is a settings management library built on top of Pydantic.
+pydantic-settings==2.6.1
+
+# requests is a simple and elegant HTTP library for Python, used for making HTTP requests.
+requests==2.32.3
+
+# redis is a Python client for Redis, a fast in-memory data store.
+redis==5.2.0
+
+# httpx is a fully featured HTTP client for Python 3 that provides async support.
+httpx==0.27.2
+
+# h11 is a pure-Python implementation of the HTTP/1.1 protocol.
+h11==0.14.0
+
+# starlette is a lightweight ASGI framework/toolkit, which is used by FastAPI under the hood.
+starlette==0.41.2
+
+# Beautiful Soup is a library for parsing HTML and XML documents, useful for web scraping.
+beautifulsoup4==4.12.3
+
+# lxml is a library for processing XML and HTML in Python.
+lxml==5.3.0
+
+# nltk is a natural language toolkit for Python, useful for working with human language data.
+nltk==3.9.1
+
+# numpy is a library for numerical computations, used extensively in data analysis.
+numpy==1.26.4
+
+# marshmallow is an object serialization/deserialization library for complex data types.
+marshmallow==3.23.1
+
+# passlib[bcrypt] adds bcrypt hashing support to the Passlib library.
+bcrypt==4.2.0
+
+# emoji is a library for working with emoji in Python.
+emoji==2.14.0
+
+# pypdf is a library for manipulating PDF files in Python.
+pypdf==5.1.0
+
+# pydantic_core is the core library of Pydantic, which implements the data validation and parsing logic.
+pydantic_core==2.23.4
+
+# typing-extensions provides support for newer type hinting features in older Python versions.
+typing_extensions==4.12.2
+
+# certifi is a package that provides Mozilla's CA Bundle.
+certifi==2024.8.30
+
+# cffi is a Foreign Function Interface for Python calling C code.
+cffi==1.17.1
+
+# cryptography is a package that provides cryptographic recipes and primitives to Python developers.
+cryptography==43.0.3
+
+# click is a package for creating command-line interfaces.
+click==8.1.7
+
+# python-multipart is a library for handling multipart file uploads.
+python-multipart==0.0.17
+
+# anyio is a library for asynchronous I/O and task management.
+anyio==4.6.2.post1
+
+# backoff is a simple library for retrying functions with exponential backoff.
+backoff==2.2.1
+
+# tqdm is a library for creating progress bars in the console.
+tqdm==4.66.6
+
+# requests-toolbelt is a collection of utilities for use with the requests library.
+requests-toolbelt==1.0.0
+
+# regex is a library that provides regular expression matching operations.
+regex==2024.9.11
+
+# unstructured and unstructured-client are libraries for working with unstructured data.
+unstructured==0.16.4
+unstructured-client==0.26.2
+
+# Install additional unstructured dependencies
+unstructured[pdf]
+unstructured[ppt]
+unstructured[csv]
+
+# dataclasses-json provides a way to serialize and deserialize dataclasses.
+dataclasses-json==0.6.7
+
+# filetype is a library for detecting file types.
+filetype==1.2.0
+
+# joblib is a library for lightweight pipelining in Python.
+joblib==1.4.2
+
+# psutil is a library for retrieving information on running processes and system utilization.
+psutil==6.1.0
+
+# pycparser is a parser for C written in Python.
+pycparser==2.22
+
+# idna is a library for internationalized domain names in applications.
+idna==3.10
+
+# charset-normalizer is a library for character encoding detection.
+charset-normalizer==3.4.0
+
+# html5lib is a library for parsing HTML documents.
+html5lib==1.1
+
+# olefile is a library to read and write OLE files.
+olefile==0.47
+
+# jsonpath-python is a library for querying JSON data.
+jsonpath-python==1.0.6
+
+# langdetect is a language detection library.
+langdetect==1.0.9
+
+# greenlet is a spin-off of the coroutine library, used in conjunction with asyncio.
+greenlet==3.1.1
+
+# sniffio is a library for dealing with asynchronous I/O.
+sniffio==1.3.1
+
+# webencodings is a library for encoding and decoding web-related formats.
+webencodings==0.5.1
+
+# wrapt is a library for decorators and wrappers.
+wrapt==1.16.0
+
+# exceptiongroup is a library to handle multiple exceptions in Python.
+exceptiongroup==1.2.2
+
+# typing-inspect is a library that provides type inspection utilities.
+typing-inspect==0.9.0
+
+# nest-asyncio allows nested use of asyncio.run() and similar functions.
+nest-asyncio==1.6.0
+
+# PyJWT is a library for creating and verifying JSON Web Tokens.
+PyJWT==2.9.0
+
+# psutil is a library for retrieving information on running processes and system utilization.
+psutil==6.1.0
+
+# AWS SDK for Python, used for S3 storage
+boto3==1.35.54
