@@ -9,8 +9,6 @@ app = FastAPI()
 
 # Initialize the database (optional to run every time)
 create_database()
-
-from app.services.nlp_service import NLPService
     
 @app.get("/")
 async def root():

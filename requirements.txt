@@ -168,3 +168,7 @@ psutil==6.1.0
 
 # AWS SDK for Python, used for S3 storage
 boto3==1.35.54
+
+
+# Use faiss-gpu if you have a GPU
+faiss-cpu  

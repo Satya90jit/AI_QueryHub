@@ -1,68 +1,43 @@
-# app/services/nlp_service.py
-from sklearn.metrics.pairwise import cosine_similarity
+import faiss
+import torch
+from transformers import AutoTokenizer, AutoModel
 import numpy as np
-from sentence_transformers import SentenceTransformer
-from app.models.document import Document
-from sqlalchemy.orm import Session
 
-class NLPService:
-    model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
-    embeddings = {}  # Store document embeddings in memory
-    documents = {}  # Store document contents by ID
+class DocumentIndexer:
+    def __init__(self, embedding_model="sentence-transformers/all-MiniLM-L6-v2"):
+        self.tokenizer = AutoTokenizer.from_pretrained(embedding_model)
+        self.model = AutoModel.from_pretrained(embedding_model)
+        self.index = faiss.IndexFlatL2(384)  # Ensure this matches the embedding dimension
 
-    @classmethod
-    def index_document(cls, doc_content: str, doc_id: int):
-        """Indexes the document's content by generating its embedding."""
-        try:
-            # Generate an embedding for the document content
-            embedding = cls.model.encode(doc_content)
-            
-            # Check if the embedding is valid
-            if embedding is None or np.isnan(embedding).any() or len(embedding) == 0:
-                print(f"Error: Invalid embedding for document: {doc_content}")
-                return
-            
-            # Store the embedding and content with the document id as key
-            cls.embeddings[doc_id] = embedding
-            cls.documents[doc_id] = doc_content
-            print(f"Document Indexed: {doc_content}")
-        except Exception as e:
-            print(f"Error indexing document: {e}")
+    def embed_text(self, text):
+        inputs = self.tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+        with torch.no_grad():
+            embeddings = self.model(**inputs).last_hidden_state.mean(dim=1)
+        return embeddings.cpu().numpy()
 
-    @classmethod
-    def query_document(cls, query: str, db: Session, threshold=0.5):
-        """Queries indexed documents to find the most relevant ones."""
-        try:
-            # Generate an embedding for the query
-            query_embedding = cls.model.encode(query)
-            
-            if query_embedding is None or np.isnan(query_embedding).any() or len(query_embedding) == 0:
-                print(f"Error: Invalid query embedding for query: {query}")
-                return {"error": "Invalid query embedding"}
-            
-            # Calculate cosine similarities between the query and all indexed documents
-            similarities = {}
-            for doc_id, doc_embedding in cls.embeddings.items():
-                sim = cosine_similarity([query_embedding], [doc_embedding])[0][0]
-                similarities[doc_id] = sim
+    def index_document(self, document_texts):
+        embeddings = np.vstack([self.embed_text(text) for text in document_texts])
+        self.index.add(embeddings)
+        print(f"Indexed {self.index.ntotal} documents.")  # Debug: Check number of documents indexed
 
-            # Sort documents by similarity score in descending order
-            sorted_docs = sorted(similarities.items(), key=lambda x: x[1], reverse=True)
-            
-            if sorted_docs and sorted_docs[0][1] >= threshold:
-                best_doc_id = sorted_docs[0][0]
-                best_doc_content = cls.documents.get(best_doc_id, "Content not found")
-                
-                print(f"Found relevant document with ID: {best_doc_id} and similarity: {sorted_docs[0][1]}")
-                
-                # Fetch the actual document content from the database
-                document = db.query(Document).filter(Document.id == best_doc_id).first()
-                if document:
-                    return {"document_id": document.id, "content": document.filename, "text": document.file_metadata}
-                else:
-                    return {"message": "Document not found in the database"}
-            else:
-                return {"message": "No relevant documents found"}
-        except Exception as e:
-            print(f"Error querying document: {e}")
-            return {"error": str(e)}
+    def query_document(self, query: str, threshold=1e-2):  # Adjusted threshold for relevance
+        query_embedding = self.embed_text(query)
+        print(f"Query embedding shape: {query_embedding.shape}")  # Debug: Ensure shape is (1, 384)
+
+        if self.index.ntotal == 0:
+            print("No documents in the index.")  # Debug: No documents indexed
+            return {"message": "No documents indexed."}
+
+        D, I = self.index.search(query_embedding, k=5)
+        print(f"Search results: {D}, {I}")  # Debug: Check raw search results
+
+        similarity_scores = D.flatten()
+        document_ids = I.flatten()
+
+        relevant_results = [{"doc_id": int(doc_id), "score": float(score)} 
+                            for doc_id, score in zip(document_ids, similarity_scores) if score > threshold]
+
+        if relevant_results:
+            return relevant_results
+        else:
+            return {"message": "No relevant documents found"}

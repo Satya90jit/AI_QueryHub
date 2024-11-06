@@ -7,11 +7,17 @@ from app.schemas.document import DocumentOut
 from app.models.document import Document
 import logging
 import json
-from app.services.nlp_service import NLPService
+from app.services.rag_agent import RAGAgent
+from app.services.nlp_service import DocumentIndexer
 
 router = APIRouter()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+rag_agent = RAGAgent()  # Initialize your RAG agent
+# Initialize indexer instance
+indexer = DocumentIndexer()
+
 
 # Upload and create a document with metadata extraction and S3 storage
 @router.post("/upload/", response_model=DocumentOut, status_code=status.HTTP_201_CREATED)
@@ -63,10 +69,10 @@ def get_document(document_id: int, db: Session = Depends(get_db)):
 
 # Query the NLP model
 @router.get("/query/")
-async def query_document_nlp(query: str = Query(...), db: Session = Depends(get_db)):
+async def query_document_nlp(query: str = Query(...)):
     try:
         logger.info(f"Received query: {query}")
-        response = NLPService.query_document(query, db)
+        response = indexer.query_document(query)
         logger.info(f"Query response: {response}")
         return {"query": query, "response": response}
     except Exception as e:
